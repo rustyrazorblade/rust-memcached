@@ -1,0 +1,5 @@
+[package]
+
+name = "rust-memcache"
+version = "0.0.1"
+authors = ["Jon Haddad <jon@jonhaddad.com>"]
