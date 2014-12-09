@@ -47,7 +47,8 @@ fn parse_command(s: String) -> MemcachedOp {
     let command = tokens.next().unwrap();
 
     if command == "set" {
-        return MemcachedOp::SetOp("test".to_string(), "value".to_string(), 0);
+        let val = lines.next().unwrap();
+        return MemcachedOp::SetOp("test".to_string(), val.to_string(), 0);
     } else if command == "get" {
         return MemcachedOp::GetOp("test".to_string());
     }
@@ -61,7 +62,9 @@ fn test_parse_set_basic() {
     let parsed = parse_command("set jon\nhaddad".to_string());
     match parsed {
         MemcachedOp::SetOp(key, value, expire) =>
-            println!("OK"),
+            if value != "haddad".to_string() {
+                panic!("looking for haddad found {}", value)
+            },
         _ =>
             panic!("wrong type")
             
