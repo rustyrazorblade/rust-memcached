@@ -5,6 +5,7 @@ use std::io::{TcpListener, TcpStream};
 use std::io::{Acceptor, Listener};
 //use std::string::String;
 
+use std::ascii::OwnedAsciiExt;
 use std::str::from_utf8;
 
 use std::vec::Vec;
@@ -44,12 +45,15 @@ fn parse_command(s: String) -> MemcachedOp {
     let mut lines = ss.split('\n');
 
     let mut tokens = lines.next().unwrap().split(' ');
-    let command = tokens.next().unwrap();
 
-    if command == "set" {
+    let command = tokens.next().unwrap().to_string();
+    let lowered = command.into_ascii_lower();
+    let command_lowered = lowered.as_slice();
+
+    if command_lowered == "set" {
         let val = lines.next().unwrap();
         return MemcachedOp::SetOp("test".to_string(), val.to_string(), 0);
-    } else if command == "get" {
+    } else if command_lowered == "get" {
         return MemcachedOp::GetOp("test".to_string());
     }
 
@@ -59,7 +63,7 @@ fn parse_command(s: String) -> MemcachedOp {
 
 #[test]
 fn test_parse_set_basic() {
-    let parsed = parse_command("set jon\nhaddad".to_string());
+    let parsed = parse_command("SET jon\nhaddad".to_string());
     match parsed {
         MemcachedOp::SetOp(key, value, expire) =>
             if value != "haddad".to_string() {
