@@ -43,8 +43,7 @@ fn event_loop(mut cm: Box<CacheManager>) -> Sender<MemcachedMsg> {
     let (tx, rx) = channel::<MemcachedMsg>();
 
     spawn(proc() {
-        loop {
-            let msg = rx.recv();
+        for msg in rx.iter() {
             
             match msg.msg {
                 MemcachedOp::Shutdown => {
@@ -53,8 +52,8 @@ fn event_loop(mut cm: Box<CacheManager>) -> Sender<MemcachedMsg> {
                     return
                 },
                 MemcachedOp::SetOp(key, value, expire) => {
-                    println!("setting");
                     cm.put(key, value);
+                    msg.response_channel.send(MemcachedResponse::OK)
                 }
                 _ => 
                     println!("unknown"),
@@ -64,6 +63,7 @@ fn event_loop(mut cm: Box<CacheManager>) -> Sender<MemcachedMsg> {
     tx
 }
 
+// send a message & wait for response.  
 fn send(tx: Sender<MemcachedMsg>, m: MemcachedOp) -> MemcachedResponse {
     let (response_channel_tx, response_channel_rx) = channel::<MemcachedResponse>();
     let msg = MemcachedMsg{msg:m, response_channel:response_channel_tx};
@@ -77,13 +77,21 @@ fn test_event_loop() {
 
     let tx = event_loop(cm);
     
-    match send(tx, MemcachedOp::Shutdown) {
+    for x in range(0i, 100) {
+        match send(tx.clone(), MemcachedOp::SetOp("k".to_string(), "v".to_string(), 0)) {
+            MemcachedResponse::OK =>
+                println!("OK"),
+            _ =>
+                panic!("was expecting ok")
+        }
+    }
+
+    match send(tx.clone(), MemcachedOp::Shutdown) {
         MemcachedResponse::ShuttingDown =>
             println!("OK"),
         _ =>
             panic!("was expecting shutdown")
     }
-
     
 }
 enum MemcachedOp {
@@ -95,7 +103,8 @@ enum MemcachedOp {
 
 enum MemcachedResponse {
     ShuttingDown,
-    OK
+    OK,
+    Option(String) // returns the value
 }
 
 fn parse_command(s: String) -> MemcachedOp {
