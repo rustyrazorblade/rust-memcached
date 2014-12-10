@@ -124,9 +124,8 @@ fn parse_command(s: String) -> MemcachedOp {
 fn test_parse_set_basic() {
     let parsed = parse_command("SET jon\nhaddad".to_string());
     match parsed {
-        MemcachedOp::SetOp(key, value, expire) =>
-            if value != "haddad".to_string() {
-                panic!("looking for haddad found {}", value)
+        MemcachedOp::SetOp(key, value, expire) => {
+            assert_eq!(value, "haddad".to_string());
             },
         _ =>
             panic!("wrong type")
