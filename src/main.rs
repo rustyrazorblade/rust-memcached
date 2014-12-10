@@ -8,8 +8,6 @@ use std::io::{Acceptor, Listener};
 use std::ascii::OwnedAsciiExt;
 use std::str::from_utf8;
 
-use std::vec::Vec;
-
 
 struct CacheManager {
     data: HashMap<String, String>,
@@ -18,7 +16,7 @@ struct CacheManager {
 impl CacheManager {
 
     fn new() -> Box<CacheManager> {
-        let mut map: HashMap<String, String> = HashMap::new();
+        let map: HashMap<String, String> = HashMap::new();
         box CacheManager{data:map}
     }
     
@@ -32,17 +30,19 @@ impl CacheManager {
     }
 }
 
-//struct CacheEventLoop {
- //   inbox: Receiver<MemcachedOp>,
-  //  tx: Sender<MemcachedOp>,
-//}
-
 fn event_loop(mut cm: Box<CacheManager>) -> Sender<MemcachedOp>{
+    // cm is moved, freed after this function
+    //
+    // create response channel
+    let (rtx, rrx) = channel::<MemcachedResponse>();
+    
     let (tx, rx) = channel::<MemcachedOp>();
+
     spawn(proc() {
         loop {
             println!("looping");
-            match rx.recv() {
+            let msg = rx.recv();
+            match msg {
                 MemcachedOp::Shutdown => {
                     println!("received shutdown");
                     return
@@ -63,16 +63,22 @@ fn event_loop(mut cm: Box<CacheManager>) -> Sender<MemcachedOp>{
 #[test]
 fn test_event_loop() {
     let cm = CacheManager::new();
+
     let tx = event_loop(cm);
 
     tx.send(MemcachedOp::SetOp("key".to_string(), "value".to_string(), 1));
     tx.send(MemcachedOp::Shutdown);
+    
 }
 enum MemcachedOp {
     SetOp(String, String, int), // key, value, expire in seconds
     GetOp(String), // key
     IncrementOp,
     Shutdown
+}
+
+enum MemcachedResponse {
+
 }
 
 fn parse_command(s: String) -> MemcachedOp {
@@ -140,7 +146,7 @@ fn main() {
     
     println!("creating cache manager");
 
-    let mut cm = CacheManager::new();
+    let cm = CacheManager::new();
 
     println!("starting up socket server");
 
