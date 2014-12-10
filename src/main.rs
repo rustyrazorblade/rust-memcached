@@ -30,19 +30,23 @@ impl CacheManager {
     }
 }
 
-fn event_loop(mut cm: Box<CacheManager>) -> Sender<MemcachedOp>{
+struct MemcachedMsg {
+    msg: MemcachedOp,
+    response_channel: Sender<MemcachedResponse>,
+}
+
+fn event_loop(mut cm: Box<CacheManager>) -> Sender<MemcachedMsg> {
     // cm is moved, freed after this function
-    //
-    // create response channel
-    let (rtx, rrx) = channel::<MemcachedResponse>();
+    // messages that come in must include a response channel (tx)
     
-    let (tx, rx) = channel::<MemcachedOp>();
+    // event_loop listening channel
+    let (tx, rx) = channel::<MemcachedMsg>();
 
     spawn(proc() {
         loop {
-            println!("looping");
             let msg = rx.recv();
-            match msg {
+            
+            match msg.msg {
                 MemcachedOp::Shutdown => {
                     println!("received shutdown");
                     return
@@ -56,19 +60,22 @@ fn event_loop(mut cm: Box<CacheManager>) -> Sender<MemcachedOp>{
             }
         }
     });
-    tx
 }
 
+fn send(tx: &Sender<MemcachedMsg>, m: &MemcachedOp) -> MemcachedResponse {
+    let (response_channel_tx, response_channel_rx) = channel::<MemcachedResponse>();
+    let msg = MemcachedMsg{msg:m, response_channel:response_channel_tx};
+    tx.send(msg);
+    response_channel_rx.recv()
+}
 
 #[test]
 fn test_event_loop() {
     let cm = CacheManager::new();
 
     let tx = event_loop(cm);
-
-    tx.send(MemcachedOp::SetOp("key".to_string(), "value".to_string(), 1));
-    tx.send(MemcachedOp::Shutdown);
     
+    send(tx, MemcachedOp::Shutdown);
 }
 enum MemcachedOp {
     SetOp(String, String, int), // key, value, expire in seconds
