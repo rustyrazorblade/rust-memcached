@@ -60,9 +60,10 @@ fn event_loop(mut cm: Box<CacheManager>) -> Sender<MemcachedMsg> {
             }
         }
     });
+    tx
 }
 
-fn send(tx: &Sender<MemcachedMsg>, m: &MemcachedOp) -> MemcachedResponse {
+fn send(tx: Sender<MemcachedMsg>, m: MemcachedOp) -> MemcachedResponse {
     let (response_channel_tx, response_channel_rx) = channel::<MemcachedResponse>();
     let msg = MemcachedMsg{msg:m, response_channel:response_channel_tx};
     tx.send(msg);
@@ -75,7 +76,7 @@ fn test_event_loop() {
 
     let tx = event_loop(cm);
     
-    send(tx, MemcachedOp::Shutdown);
+    let response = send(tx, MemcachedOp::Shutdown);
 }
 enum MemcachedOp {
     SetOp(String, String, int), // key, value, expire in seconds
