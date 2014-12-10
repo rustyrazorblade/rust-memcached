@@ -47,8 +47,10 @@ fn event_loop(mut cm: Box<CacheManager>) -> Sender<MemcachedOp>{
                     println!("received shutdown");
                     return
                 },
-                MemcachedOp::SetOp(key, value, expire) =>
-                    cm.put(key, value),
+                MemcachedOp::SetOp(key, value, expire) => {
+                    println!("setting");
+                    cm.put(key, value);
+                }
                 _ => 
                     println!("unknown"),
             }
@@ -61,8 +63,9 @@ fn event_loop(mut cm: Box<CacheManager>) -> Sender<MemcachedOp>{
 #[test]
 fn test_event_loop() {
     let cm = CacheManager::new();
-    
     let tx = event_loop(cm);
+
+    tx.send(MemcachedOp::SetOp("key".to_string(), "value".to_string(), 1));
     tx.send(MemcachedOp::Shutdown);
 }
 enum MemcachedOp {
