@@ -12,15 +12,14 @@ use std::vec::Vec;
 
 
 struct CacheManager {
-    data: HashMap<String, String>   
-    
+    data: HashMap<String, String>,
 }
 
 impl CacheManager {
 
-    fn new() -> CacheManager {
+    fn new() -> Box<CacheManager> {
         let mut map: HashMap<String, String> = HashMap::new();
-        CacheManager{data:map}
+        box CacheManager{data:map}
     }
     
 
@@ -33,10 +32,44 @@ impl CacheManager {
     }
 }
 
+//struct CacheEventLoop {
+ //   inbox: Receiver<MemcachedOp>,
+  //  tx: Sender<MemcachedOp>,
+//}
+
+fn event_loop(mut cm: Box<CacheManager>) -> Sender<MemcachedOp>{
+    let (tx, rx) = channel::<MemcachedOp>();
+    spawn(proc() {
+        loop {
+            println!("looping");
+            match rx.recv() {
+                MemcachedOp::Shutdown => {
+                    println!("received shutdown");
+                    return
+                },
+                MemcachedOp::SetOp(key, value, expire) =>
+                    cm.put(key, value),
+                _ => 
+                    println!("unknown"),
+            }
+        }
+    });
+    tx
+}
+
+
+#[test]
+fn test_event_loop() {
+    let cm = CacheManager::new();
+    
+    let tx = event_loop(cm);
+    tx.send(MemcachedOp::Shutdown);
+}
 enum MemcachedOp {
     SetOp(String, String, int), // key, value, expire in seconds
     GetOp(String), // key
-    IncrementOp
+    IncrementOp,
+    Shutdown
 }
 
 fn parse_command(s: String) -> MemcachedOp {
@@ -94,6 +127,10 @@ fn direct_cache_test() {
     let result = cm.get("test".to_string());
 }
 
+#[test]
+fn test_cache_manager_get() {
+    let mut c = CacheManager::new();
+}
 
 fn main() {
     println!("Hello, world!");
