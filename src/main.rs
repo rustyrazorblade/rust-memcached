@@ -49,6 +49,7 @@ fn event_loop(mut cm: Box<CacheManager>) -> Sender<MemcachedMsg> {
             match msg.msg {
                 MemcachedOp::Shutdown => {
                     println!("received shutdown");
+                    msg.response_channel.send(MemcachedResponse::ShuttingDown);
                     return
                 },
                 MemcachedOp::SetOp(key, value, expire) => {
@@ -76,7 +77,14 @@ fn test_event_loop() {
 
     let tx = event_loop(cm);
     
-    let response = send(tx, MemcachedOp::Shutdown);
+    match send(tx, MemcachedOp::Shutdown) {
+        MemcachedResponse::ShuttingDown =>
+            println!("OK"),
+        _ =>
+            panic!("was expecting shutdown")
+    }
+
+    
 }
 enum MemcachedOp {
     SetOp(String, String, int), // key, value, expire in seconds
@@ -86,7 +94,8 @@ enum MemcachedOp {
 }
 
 enum MemcachedResponse {
-
+    ShuttingDown,
+    OK
 }
 
 fn parse_command(s: String) -> MemcachedOp {
