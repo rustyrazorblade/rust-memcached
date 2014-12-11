@@ -78,7 +78,7 @@ fn test_event_loop() {
     let tx = event_loop(cm);
     
     for x in range(0i, 100) {
-        match send(tx.clone(), MemcachedOp::SetOp("k".to_string(), "v".to_string(), 0)) {
+        match send(&tx, MemcachedOp::SetOp("k".to_string(), "v".to_string(), 0)) {
             MemcachedResponse::OK =>
                 println!("OK"),
             _ =>
@@ -86,7 +86,7 @@ fn test_event_loop() {
         }
     }
 
-    match send(tx.clone(), MemcachedOp::Shutdown) {
+    match send(&tx, MemcachedOp::Shutdown) {
         MemcachedResponse::ShuttingDown =>
             println!("OK"),
         _ =>
