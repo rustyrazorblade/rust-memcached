@@ -64,7 +64,7 @@ fn event_loop(mut cm: Box<CacheManager>) -> Sender<MemcachedMsg> {
 }
 
 // send a message & wait for response.  
-fn send(tx: Sender<MemcachedMsg>, m: MemcachedOp) -> MemcachedResponse {
+fn send(tx: &Sender<MemcachedMsg>, m: MemcachedOp) -> MemcachedResponse {
     let (response_channel_tx, response_channel_rx) = channel::<MemcachedResponse>();
     let msg = MemcachedMsg{msg:m, response_channel:response_channel_tx};
     tx.send(msg);
@@ -193,7 +193,7 @@ fn main() {
             let s = buf.slice(0, result);
             let rep = from_utf8(s).unwrap().to_string();
             let parsed = parse_command(rep);
-            let response = send(tx, parsed);
+            let response = send(&tx, parsed);
         }
     }
 
