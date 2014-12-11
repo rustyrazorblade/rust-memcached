@@ -7,7 +7,7 @@ use std::io::{Acceptor, Listener};
 
 use std::ascii::OwnedAsciiExt;
 use std::str::from_utf8;
-
+use std::fmt::{Show, Error, Formatter};
 
 struct CacheManager {
     data: HashMap<String, String>,
@@ -101,6 +101,7 @@ enum MemcachedOp {
     Shutdown
 }
 
+
 enum MemcachedResponse {
     ShuttingDown,
     OK,
@@ -144,7 +145,7 @@ fn test_parse_set_basic() {
 
 #[test]
 fn test_parse_get_basic() {
-    let parsed = parse_command("GET jon".to_string());
+    let parsed = parse_command("GET jon\r\n".to_string());
     match parsed {
         MemcachedOp::GetOp(key) =>
             println!("OK"),
@@ -172,38 +173,40 @@ fn main() {
     println!("creating cache manager");
 
     let cm = CacheManager::new();
+    let tx = event_loop(cm);
 
     println!("starting up socket server");
 
     let listener = TcpListener::bind("127.0.0.1:11211");
     
-    println!("binding to port 7777");
+    println!("binding to port 11211");
 
     let mut acceptor = listener.listen();
 
-    fn handle_client(mut stream: TcpStream) {
+    fn handle_client(mut stream: TcpStream, tx: Sender<MemcachedMsg>) {
         // for now we just do an echo server
-        println!("OK");
         let mut buf = [0u8, ..4096];
         //let mut buf = [0u8];
 
         loop {
             let result = stream.read(&mut buf).unwrap();
             let s = buf.slice(0, result);
-            let rep = from_utf8(s);
-            println!("{}", rep);
+            let rep = from_utf8(s).unwrap().to_string();
+            let parsed = parse_command(rep);
+            let response = send(tx, parsed);
         }
     }
 
     // accept connections and process them, spawning a new tasks for each one
     for stream in acceptor.incoming() {
+        let new_tx = tx.clone();
         match stream {
             Err(e) => { 
                 println!("could not accept connection {}", e);
             }
             Ok(stream) => spawn(proc() {
                 // connection succeeded
-                handle_client(stream)
+                handle_client(stream, new_tx)
             })
         }
     }
