@@ -52,16 +52,17 @@ fn event_loop(mut cm: Box<CacheManager>) -> Sender<MemcachedMsg> {
                     return
                 },
                 MemcachedOp::SetOp(key, value, expire) => {
-                    println!("Putting!");
+                    //println!("Putting!");
                     cm.put(key, value);
                     msg.response_channel.send(MemcachedResponse::Stored)
                 },
                 MemcachedOp::GetOp(key) => {
+                    let kkey = key.clone();
                     let response = cm.get(key);
                     println!("getting");
                     match response {
                         Some(s) =>
-                            msg.response_channel.send(MemcachedResponse::Found(s.clone())),
+                            msg.response_channel.send(MemcachedResponse::Found(kkey, s.clone())),
                         None =>
                             msg.response_channel.send(MemcachedResponse::NotFound)
                     }
@@ -116,7 +117,7 @@ enum MemcachedOp {
 enum MemcachedResponse {
     ShuttingDown,
     Stored,
-    Found(String),
+    Found(String, String), // key, value
     NotFound,
 }
 
@@ -205,14 +206,24 @@ fn main() {
                 Ok(result)  =>  {
                     let s = buf.slice(0, result);
                     let rep = from_utf8(s).unwrap().to_string();
-                    println!("read from client: {}", rep);
+                    //println!("read from client: {}", rep);
                     let parsed = parse_command(rep);
                     let response = send(&tx, parsed);
                     match response {
-                        MemcachedResponse::Found(s) => {
-                            let tcp_response = format!("{}\r\n", s);
+                        MemcachedResponse::Found(key, s) => {
+
+                            // VALUE <key> <flags> <bytes> [<cas unique>]\r\n
+                            // <data block>\r\n
+                            //
+                            // Example:
+                            // VALUE test 0 3
+                            // val
+                            // END
+
+                            let len = s.len();
+                            let tcp_response = format!("VALUE {} 0 {}\r\n{}\r\nEND\r\n", key, len, s);
+
                             stream.write_str(tcp_response.as_slice());
-                            println!("response sent");
                         },
                         MemcachedResponse::Stored => {
                             stream.write_str("STORED\r\n");
