@@ -54,7 +54,17 @@ fn event_loop(mut cm: Box<CacheManager>) -> Sender<MemcachedMsg> {
                 MemcachedOp::SetOp(key, value, expire) => {
                     cm.put(key, value);
                     msg.response_channel.send(MemcachedResponse::OK)
-                }
+                },
+                MemcachedOp::GetOp(key) => {
+                    let response = cm.get(key);
+                    println!("getting");
+                    match response {
+                        Some(s) =>
+                            msg.response_channel.send(MemcachedResponse::Found(s.clone())),
+                        None =>
+                            msg.response_channel.send(MemcachedResponse::NotFound)
+                    }
+                },
                 _ => 
                     println!("unknown"),
             }
@@ -105,7 +115,8 @@ enum MemcachedOp {
 enum MemcachedResponse {
     ShuttingDown,
     OK,
-    Option(String) // returns the value
+    Found(String),
+    NotFound,
 }
 
 fn parse_command(s: String) -> MemcachedOp {
@@ -189,11 +200,19 @@ fn main() {
         //let mut buf = [0u8];
 
         loop {
-            let result = stream.read(&mut buf).unwrap();
-            let s = buf.slice(0, result);
-            let rep = from_utf8(s).unwrap().to_string();
-            let parsed = parse_command(rep);
-            let response = send(&tx, parsed);
+            let result = stream.read(&mut buf);
+            match result {
+                Ok(result)  =>  {
+                    let s = buf.slice(0, result);
+                    let rep = from_utf8(s).unwrap().to_string();
+                    let parsed = parse_command(rep);
+                    let response = send(&tx, parsed);
+                },
+                Err(e) => {
+                    println!("hangup {}", e);
+                    break;
+                }
+            }    
         }
     }
 
