@@ -19,7 +19,7 @@ impl CacheManager {
         let map: HashMap<String, String> = HashMap::new();
         box CacheManager{data:map}
     }
-    
+
 
     fn put(&mut self, key:String, val:String) {
         self.data.insert(key, val);
@@ -38,13 +38,13 @@ struct MemcachedMsg {
 fn event_loop(mut cm: Box<CacheManager>) -> Sender<MemcachedMsg> {
     // cm is moved, freed after this function
     // messages that come in must include a response channel (tx)
-    
+
     // event_loop listening channel
     let (tx, rx) = channel::<MemcachedMsg>();
 
-    spawn(proc() {
+    spawn(move || {
         for msg in rx.iter() {
-            
+
             match msg.msg {
                 MemcachedOp::Shutdown => {
                     println!("received shutdown");
@@ -52,8 +52,9 @@ fn event_loop(mut cm: Box<CacheManager>) -> Sender<MemcachedMsg> {
                     return
                 },
                 MemcachedOp::SetOp(key, value, expire) => {
+                    println!("Putting!");
                     cm.put(key, value);
-                    msg.response_channel.send(MemcachedResponse::OK)
+                    msg.response_channel.send(MemcachedResponse::Stored)
                 },
                 MemcachedOp::GetOp(key) => {
                     let response = cm.get(key);
@@ -65,7 +66,7 @@ fn event_loop(mut cm: Box<CacheManager>) -> Sender<MemcachedMsg> {
                             msg.response_channel.send(MemcachedResponse::NotFound)
                     }
                 },
-                _ => 
+                _ =>
                     println!("unknown"),
             }
         }
@@ -73,7 +74,7 @@ fn event_loop(mut cm: Box<CacheManager>) -> Sender<MemcachedMsg> {
     tx
 }
 
-// send a message & wait for response.  
+// send a message & wait for response.
 fn send(tx: &Sender<MemcachedMsg>, m: MemcachedOp) -> MemcachedResponse {
     let (response_channel_tx, response_channel_rx) = channel::<MemcachedResponse>();
     let msg = MemcachedMsg{msg:m, response_channel:response_channel_tx};
@@ -86,7 +87,7 @@ fn test_event_loop() {
     let cm = CacheManager::new();
 
     let tx = event_loop(cm);
-    
+
     for x in range(0i, 100) {
         match send(&tx, MemcachedOp::SetOp("k".to_string(), "v".to_string(), 0)) {
             MemcachedResponse::OK =>
@@ -102,7 +103,7 @@ fn test_event_loop() {
         _ =>
             panic!("was expecting shutdown")
     }
-    
+
 }
 enum MemcachedOp {
     SetOp(String, String, int), // key, value, expire in seconds
@@ -114,7 +115,7 @@ enum MemcachedOp {
 
 enum MemcachedResponse {
     ShuttingDown,
-    OK,
+    Stored,
     Found(String),
     NotFound,
 }
@@ -138,7 +139,7 @@ fn parse_command(s: String) -> MemcachedOp {
     }
 
     return MemcachedOp::GetOp("test".to_string());
-    
+
 }
 
 #[test]
@@ -150,7 +151,7 @@ fn test_parse_set_basic() {
             },
         _ =>
             panic!("wrong type")
-            
+
     }
 }
 
@@ -162,7 +163,7 @@ fn test_parse_get_basic() {
             println!("OK"),
         _ =>
             panic!("wrong type")
-            
+
     }
 }
 
@@ -180,7 +181,7 @@ fn test_cache_manager_get() {
 
 fn main() {
     println!("Hello, world!");
-    
+
     println!("creating cache manager");
 
     let cm = CacheManager::new();
@@ -189,7 +190,7 @@ fn main() {
     println!("starting up socket server");
 
     let listener = TcpListener::bind("127.0.0.1:11211");
-    
+
     println!("binding to port 11211");
 
     let mut acceptor = listener.listen();
@@ -200,19 +201,31 @@ fn main() {
         //let mut buf = [0u8];
 
         loop {
-            let result = stream.read(&mut buf);
-            match result {
+            match stream.read(&mut buf) {
                 Ok(result)  =>  {
                     let s = buf.slice(0, result);
                     let rep = from_utf8(s).unwrap().to_string();
+                    println!("read from client: {}", rep);
                     let parsed = parse_command(rep);
                     let response = send(&tx, parsed);
+                    match response {
+                        MemcachedResponse::Found(s) => {
+                            let tcp_response = format!("{}\r\n", s);
+                            stream.write_str(tcp_response.as_slice());
+                            println!("response sent");
+                        },
+                        MemcachedResponse::Stored => {
+                            stream.write_str("STORED\r\n");
+                        }
+                        _ =>
+                            println!("Umm")
+                    }
                 },
                 Err(e) => {
                     println!("hangup {}", e);
                     break;
                 }
-            }    
+            }
         }
     }
 
@@ -220,10 +233,10 @@ fn main() {
     for stream in acceptor.incoming() {
         let new_tx = tx.clone();
         match stream {
-            Err(e) => { 
+            Err(e) => {
                 println!("could not accept connection {}", e);
             }
-            Ok(stream) => spawn(proc() {
+            Ok(stream) => spawn(move || {
                 // connection succeeded
                 handle_client(stream, new_tx)
             })
