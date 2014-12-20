@@ -54,7 +54,17 @@ fn event_loop(mut cm: Box<CacheManager>) -> Sender<MemcachedMsg> {
                 MemcachedOp::SetOp(key, value, expire) => {
                     cm.put(key, value);
                     msg.response_channel.send(MemcachedResponse::OK)
-                }
+                },
+                MemcachedOp::GetOp(key) => {
+                    let response = cm.get(key);
+                    println!("getting");
+                    match response {
+                        Some(s) =>
+                            msg.response_channel.send(MemcachedResponse::Found(s.clone())),
+                        None =>
+                            msg.response_channel.send(MemcachedResponse::NotFound)
+                    }
+                },
                 _ => 
                     println!("unknown"),
             }
@@ -105,7 +115,8 @@ enum MemcachedOp {
 enum MemcachedResponse {
     ShuttingDown,
     OK,
-    Option(String) // returns the value
+    Found(String),
+    NotFound,
 }
 
 fn parse_command(s: String) -> MemcachedOp {
