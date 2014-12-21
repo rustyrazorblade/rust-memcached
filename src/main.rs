@@ -132,9 +132,11 @@ fn parse_command(s: String) -> MemcachedOp {
     let lowered = command.into_ascii_lower();
     let command_lowered = lowered.as_slice();
 
+
     if command_lowered == "set" {
+        let key = tokens.next().unwrap();
         let val = lines.next().unwrap();
-        return MemcachedOp::SetOp("test".to_string(), val.to_string(), 0);
+        return MemcachedOp::SetOp(key.to_string(), val.to_string(), 0);
     } else if command_lowered == "get" {
         return MemcachedOp::GetOp("test".to_string());
     }
@@ -150,6 +152,7 @@ fn test_parse_set_basic() {
         MemcachedOp::SetOp(key, value, expire) => {
             assert_eq!(6, value.len());
             assert_eq!(value, "haddad".to_string());
+            assert_eq!(key, "jon".to_string());
             },
         _ =>
             panic!("wrong type")
