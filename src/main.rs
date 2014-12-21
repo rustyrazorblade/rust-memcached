@@ -108,7 +108,7 @@ fn test_event_loop() {
 enum MemcachedOp {
     SetOp(String, String, int), // key, value, expire in seconds
     GetOp(String), // key
-    IncrementOp,
+    IncrementOp(String, i64),
     Shutdown
 }
 
@@ -131,7 +131,6 @@ fn parse_command(s: String) -> MemcachedOp {
     let lowered = command.into_ascii_lower();
     let command_lowered = lowered.as_slice();
 
-
     if command_lowered == "set" {
         let key = tokens.next().unwrap();
         let val = lines.next().unwrap();
@@ -139,10 +138,26 @@ fn parse_command(s: String) -> MemcachedOp {
     } else if command_lowered == "get" {
         let key = tokens.next().unwrap();
         return MemcachedOp::GetOp(key.to_string());
+    } else if command_lowered == "incr" {
+        let key = tokens.next().unwrap();
+        return MemcachedOp::IncrementOp(key.to_string(), 1);
     }
 
     return MemcachedOp::GetOp("test".to_string());
 
+}
+#[test]
+fn test_incr() {
+    // create a key, set to zero
+
+    let parsed = parse_command("INCR test 1".to_string());
+    match parsed {
+        MemcachedOp::IncrementOp(key, value) => {
+            assert_eq!(key, "test".to_string());
+            assert_eq!(value, 1);
+        }
+        _ => panic!("Was expectring an increment call")
+    }
 }
 
 #[test]
