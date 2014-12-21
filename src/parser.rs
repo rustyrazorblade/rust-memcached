@@ -81,3 +81,17 @@ fn test_parse_flush_all() {
         _ => panic!("Bad flush_all parse")
     }
 }
+
+#[test]
+fn test_incr() {
+    // create a key, set to zero
+
+    let parsed = parse_command("INCR test 1".to_string());
+    match parsed {
+        MemcachedOp::Increment(key, value) => {
+            assert_eq!(key, "test".to_string());
+            assert_eq!(value, 1);
+        }
+        _ => panic!("Was expectring an increment call")
+    }
+}

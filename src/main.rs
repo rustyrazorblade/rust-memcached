@@ -11,33 +11,12 @@ use std::fmt::{Show, Error, Formatter};
 use std::string::String;
 
 use parser::{MemcachedOp,parse_command};
+use cache::CacheManager;
 
 mod parser;
 mod response;
+mod cache;
 
-struct CacheManager {
-    data: HashMap<String, String>,
-}
-
-impl CacheManager {
-
-    fn new() -> Box<CacheManager> {
-        let map: HashMap<String, String> = HashMap::new();
-        box CacheManager{data:map}
-    }
-
-
-    fn put(&mut self, key:String, val:String) {
-        self.data.insert(key, val);
-    }
-
-    fn get(&self, key:String) -> Option<&String> {
-        self.data.get(&key)
-    }
-    fn increment(&self, key:String) -> Option<i64> {
-        return Some(0i64);
-    }
-}
 
 struct MemcachedMsg {
     msg: MemcachedOp,
@@ -154,33 +133,9 @@ enum MemcachedResponse {
     OK,
 }
 
-#[test]
-fn test_incr() {
-    // create a key, set to zero
-
-    let parsed = parse_command("INCR test 1".to_string());
-    match parsed {
-        MemcachedOp::Increment(key, value) => {
-            assert_eq!(key, "test".to_string());
-            assert_eq!(value, 1);
-        }
-        _ => panic!("Was expectring an increment call")
-    }
-}
 
 
 
-#[test]
-fn direct_cache_test() {
-    let mut cm = CacheManager::new();
-    cm.put("test".to_string(), "value".to_string());
-    let result = cm.get("test".to_string());
-}
-
-#[test]
-fn test_cache_manager_get() {
-    let mut c = CacheManager::new();
-}
 
 fn main() {
     println!("Hello, world!");
