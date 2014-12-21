@@ -9,6 +9,7 @@ pub enum MemcachedOp {
     Delete,
     Err,
     FlushAll,
+    Touch(String), //
 }
 
 
@@ -35,6 +36,9 @@ pub fn parse_command(s: String) -> MemcachedOp {
         return MemcachedOp::Increment(key.to_string(), 1);
     } else if command_lowered == "flush_all" {
         return MemcachedOp::FlushAll
+    } else if command_lowered == "touch" {
+        let key = tokens.next().unwrap();
+        return MemcachedOp::Touch(key.to_string());
     }
 
     return MemcachedOp::Err;
