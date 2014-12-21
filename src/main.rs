@@ -8,6 +8,7 @@ use std::io::{Acceptor, Listener};
 use std::ascii::OwnedAsciiExt;
 use std::str::from_utf8;
 use std::fmt::{Show, Error, Formatter};
+use std::string::String;
 
 struct CacheManager {
     data: HashMap<String, String>,
@@ -66,6 +67,9 @@ fn event_loop(mut cm: Box<CacheManager>) -> Sender<MemcachedMsg> {
                             msg.response_channel.send(MemcachedResponse::NotFound)
                     }
                 },
+                MemcachedOp::Increment(key, value) => {
+
+                },
                 _ =>
                     println!("unknown"),
             }
@@ -84,6 +88,7 @@ impl ConvertToInt for String {
         let result: Option<i64> = from_str(buf);
         return result
     }
+
 }
 
 #[test]
@@ -129,8 +134,9 @@ fn test_event_loop() {
 enum MemcachedOp {
     SetOp(String, String, int), // key, value, expire in seconds
     GetOp(String), // key
-    IncrementOp(String, i64),
-    Shutdown
+    Increment(String, i64),
+    Shutdown,
+    Delete
 }
 
 
@@ -161,7 +167,7 @@ fn parse_command(s: String) -> MemcachedOp {
         return MemcachedOp::GetOp(key.to_string());
     } else if command_lowered == "incr" {
         let key = tokens.next().unwrap();
-        return MemcachedOp::IncrementOp(key.to_string(), 1);
+        return MemcachedOp::Increment(key.to_string(), 1);
     }
 
     return MemcachedOp::GetOp("test".to_string());
@@ -173,7 +179,7 @@ fn test_incr() {
 
     let parsed = parse_command("INCR test 1".to_string());
     match parsed {
-        MemcachedOp::IncrementOp(key, value) => {
+        MemcachedOp::Increment(key, value) => {
             assert_eq!(key, "test".to_string());
             assert_eq!(value, 1);
         }
