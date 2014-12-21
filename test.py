@@ -4,7 +4,7 @@ c = Client(("localhost", 11211))
 from time import time
 
 start = time()
-num = 10000
+num = 1
 for x in range(num):
     c.set("test", "val", noreply=False)
 

@@ -91,7 +91,7 @@ fn test_event_loop() {
 
     for x in range(0i, 100) {
         match send(&tx, MemcachedOp::SetOp("k".to_string(), "v".to_string(), 0)) {
-            MemcachedResponse::OK =>
+            MemcachedResponse::Stored =>
                 println!("OK"),
             _ =>
                 panic!("was expecting ok")
@@ -124,7 +124,7 @@ enum MemcachedResponse {
 fn parse_command(s: String) -> MemcachedOp {
     // tokenize - simply split on spaces
     let ss = s.as_slice().trim_left_chars(' ');
-    let mut lines = ss.split('\n');
+    let mut lines = ss.split_str("\r\n");
 
     let mut tokens = lines.next().unwrap().split(' ');
 
@@ -145,9 +145,10 @@ fn parse_command(s: String) -> MemcachedOp {
 
 #[test]
 fn test_parse_set_basic() {
-    let parsed = parse_command("SET jon\nhaddad".to_string());
+    let parsed = parse_command("SET jon\r\nhaddad\r\n".to_string());
     match parsed {
         MemcachedOp::SetOp(key, value, expire) => {
+            assert_eq!(6, value.len());
             assert_eq!(value, "haddad".to_string());
             },
         _ =>
@@ -206,7 +207,7 @@ fn main() {
                 Ok(result)  =>  {
                     let s = buf.slice(0, result);
                     let rep = from_utf8(s).unwrap().to_string();
-                    //println!("read from client: {}", rep);
+                    println!("read from client: {}", rep);
                     let parsed = parse_command(rep);
                     let response = send(&tx, parsed);
                     match response {
@@ -221,6 +222,7 @@ fn main() {
                             // END
 
                             let len = s.len();
+                            //println!("Found [{}]", s);
                             let tcp_response = format!("VALUE {} 0 {}\r\n{}\r\nEND\r\n", key, len, s);
 
                             stream.write_str(tcp_response.as_slice());
