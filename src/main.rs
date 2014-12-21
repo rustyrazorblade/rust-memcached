@@ -10,6 +10,10 @@ use std::str::from_utf8;
 use std::fmt::{Show, Error, Formatter};
 use std::string::String;
 
+use parser::{MemcachedOp,parse_command};
+
+mod parser;
+
 struct CacheManager {
     data: HashMap<String, String>,
 }
@@ -135,15 +139,7 @@ fn test_event_loop() {
     }
 
 }
-enum MemcachedOp {
-    SetOp(String, String, int), // key, value, expire in seconds
-    GetOp(String), // key
-    Increment(String, i64),
-    Shutdown,
-    Delete,
-    Err,
-    FlushAll,
-}
+
 
 
 enum MemcachedResponse {
@@ -154,34 +150,6 @@ enum MemcachedResponse {
     OK,
 }
 
-fn parse_command(s: String) -> MemcachedOp {
-    // tokenize - simply split on spaces
-    let ss = s.as_slice().trim_left_chars(' ');
-    let mut lines = ss.split_str("\r\n");
-
-    let mut tokens = lines.next().unwrap().split(' ');
-
-    let command = tokens.next().unwrap().to_string();
-    let lowered = command.into_ascii_lower();
-    let command_lowered = lowered.as_slice();
-
-    if command_lowered == "set" {
-        let key = tokens.next().unwrap();
-        let val = lines.next().unwrap();
-        return MemcachedOp::SetOp(key.to_string(), val.to_string(), 0);
-    } else if command_lowered == "get" {
-        let key = tokens.next().unwrap();
-        return MemcachedOp::GetOp(key.to_string());
-    } else if command_lowered == "incr" {
-        let key = tokens.next().unwrap();
-        return MemcachedOp::Increment(key.to_string(), 1);
-    } else if command_lowered == "flush_all" {
-        return MemcachedOp::FlushAll
-    }
-
-    return MemcachedOp::Err;
-
-}
 #[test]
 fn test_incr() {
     // create a key, set to zero
@@ -196,42 +164,7 @@ fn test_incr() {
     }
 }
 
-#[test]
-fn test_parse_set_basic() {
-    let parsed = parse_command("SET jon\r\nhaddad\r\n".to_string());
-    match parsed {
-        MemcachedOp::SetOp(key, value, expire) => {
-            assert_eq!(6, value.len());
-            assert_eq!(value, "haddad".to_string());
-            assert_eq!(key, "jon".to_string());
-            },
-        _ =>
-            panic!("wrong type")
 
-    }
-}
-
-#[test]
-fn test_parse_get_basic() {
-    let parsed = parse_command("GET jon\r\n".to_string());
-    match parsed {
-        MemcachedOp::GetOp(key) => {
-            assert_eq!(key, "jon".to_string());
-            println!("OK")
-            }
-        _ =>
-            panic!("wrong type")
-
-    }
-}
-
-#[test]
-fn test_parse_flush_all() {
-    match parse_command("flush_all\r\n") {
-        MemcachedOp::FlushAll => (),
-        _ => panic!("Bad flush_all parse")
-    }
-}
 
 #[test]
 fn direct_cache_test() {
