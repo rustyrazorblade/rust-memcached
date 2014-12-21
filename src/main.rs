@@ -70,8 +70,12 @@ fn event_loop(mut cm: Box<CacheManager>) -> Sender<MemcachedMsg> {
                 MemcachedOp::Increment(key, value) => {
                     msg.response_channel.send(MemcachedResponse::NotFound);
                 },
+                MemcachedOp::FlushAll => {
+                    msg.response_channel.send(MemcachedResponse::OK);
+                }
                 _ =>
-                    println!("unknown"),
+                    println!("unknown")
+
             }
         }
     });
@@ -137,7 +141,8 @@ enum MemcachedOp {
     Increment(String, i64),
     Shutdown,
     Delete,
-    Err
+    Err,
+    FlushAll,
 }
 
 
@@ -146,6 +151,7 @@ enum MemcachedResponse {
     Stored,
     Found(String, String), // key, value
     NotFound,
+    OK,
 }
 
 fn parse_command(s: String) -> MemcachedOp {
@@ -169,6 +175,8 @@ fn parse_command(s: String) -> MemcachedOp {
     } else if command_lowered == "incr" {
         let key = tokens.next().unwrap();
         return MemcachedOp::Increment(key.to_string(), 1);
+    } else if command_lowered == "flush_all" {
+        return MemcachedOp::FlushAll
     }
 
     return MemcachedOp::Err;
@@ -214,6 +222,14 @@ fn test_parse_get_basic() {
         _ =>
             panic!("wrong type")
 
+    }
+}
+
+#[test]
+fn test_parse_flush_all() {
+    match parse_command("flush_all\r\n") {
+        MemcachedOp::FlushAll => (),
+        _ => panic!("Bad flush_all parse")
     }
 }
 
@@ -273,13 +289,17 @@ fn main() {
                             let tcp_response = format!("VALUE {} 0 {}\r\n{}\r\nEND\r\n", key, len, s);
 
                             stream.write_str(tcp_response.as_slice());
-                        },
+                        }
                         MemcachedResponse::Stored => {
                             stream.write_str("STORED\r\n");
-                        },
+                        }
                         MemcachedResponse::NotFound => {
                             stream.write_str("NOT_FOUND\r\n");
                         }
+                        MemcachedResponse::OK => {
+                            stream.write_str("OK\r\n");
+                        }
+
                         _ =>
                             println!("Umm")
                     }
