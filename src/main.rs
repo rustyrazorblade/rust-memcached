@@ -46,7 +46,7 @@ fn event_loop(mut cm: Box<CacheManager>) -> Sender<MemcachedMsg> {
                 },
                 MemcachedOp::GetOp(key) => {
                     let kkey = key.clone();
-                    let response = cm.get(key);
+                    let response = cm.get(&key);
                     match response {
                         Some(s) =>
                             msg.response_channel.send(MemcachedResponse::Found(kkey, s.clone())),
@@ -69,27 +69,7 @@ fn event_loop(mut cm: Box<CacheManager>) -> Sender<MemcachedMsg> {
     tx
 }
 
-trait ConvertToInt {
-    fn to_int(&self) -> Option<i64>;
-}
 
-impl ConvertToInt for String {
-    fn to_int(&self) -> Option<i64> {
-        let buf = self.as_slice();
-        let result: Option<i64> = from_str(buf);
-        return result
-    }
-
-}
-
-#[test]
-fn test_convert_to_int() {
-    let a = "10".to_string().to_int().unwrap();
-    assert_eq!(10i64, a);
-
-    let a = "11".to_string().to_int().unwrap();
-    assert_eq!(11i64, a);
-}
 
 // send a message & wait for response.
 fn send(tx: &Sender<MemcachedMsg>, m: MemcachedOp) -> MemcachedResponse {
@@ -123,8 +103,6 @@ fn test_event_loop() {
 
 }
 
-
-
 enum MemcachedResponse {
     ShuttingDown,
     Stored,
@@ -132,9 +110,6 @@ enum MemcachedResponse {
     NotFound,
     OK,
 }
-
-
-
 
 
 fn main() {
