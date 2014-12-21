@@ -59,7 +59,6 @@ fn event_loop(mut cm: Box<CacheManager>) -> Sender<MemcachedMsg> {
                 MemcachedOp::GetOp(key) => {
                     let kkey = key.clone();
                     let response = cm.get(key);
-                    println!("getting");
                     match response {
                         Some(s) =>
                             msg.response_channel.send(MemcachedResponse::Found(kkey, s.clone())),
@@ -138,7 +137,8 @@ fn parse_command(s: String) -> MemcachedOp {
         let val = lines.next().unwrap();
         return MemcachedOp::SetOp(key.to_string(), val.to_string(), 0);
     } else if command_lowered == "get" {
-        return MemcachedOp::GetOp("test".to_string());
+        let key = tokens.next().unwrap();
+        return MemcachedOp::GetOp(key.to_string());
     }
 
     return MemcachedOp::GetOp("test".to_string());
@@ -164,8 +164,10 @@ fn test_parse_set_basic() {
 fn test_parse_get_basic() {
     let parsed = parse_command("GET jon\r\n".to_string());
     match parsed {
-        MemcachedOp::GetOp(key) =>
-            println!("OK"),
+        MemcachedOp::GetOp(key) => {
+            assert_eq!(key, "jon".to_string());
+            println!("OK")
+            }
         _ =>
             panic!("wrong type")
 
@@ -210,7 +212,6 @@ fn main() {
                 Ok(result)  =>  {
                     let s = buf.slice(0, result);
                     let rep = from_utf8(s).unwrap().to_string();
-                    println!("read from client: {}", rep);
                     let parsed = parse_command(rep);
                     let response = send(&tx, parsed);
                     match response {
