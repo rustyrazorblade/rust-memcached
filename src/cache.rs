@@ -30,6 +30,9 @@ impl CacheManager {
         }
     }
 
+    pub fn decrement(&mut self, key:&String, value:i64) -> Option<String> {
+        self.increment(key, 0i64-value)
+    }
 
     pub fn increment(&mut self, key:&String, value:i64) -> Option<String> {
         let data = self.get(key);
@@ -63,7 +66,7 @@ fn test_cache_manager_get() {
 }
 
 #[test]
-fn increment_test() {
+fn increment_derement_test() {
     let mut c = CacheManager::new();
     let s = "test".to_string();
 
@@ -78,6 +81,17 @@ fn increment_test() {
 
     let result = c.get(&s).unwrap();
     assert_eq!(result, "1".to_string());
+
+    match c.decrement(&s, 4i64) {
+        // should return the correct value
+        Some(x) =>
+            (),
+        None =>
+            panic!("Expected a return value.")
+    }
+
+    let result = c.get(&s).unwrap();
+    assert_eq!(result, "-3".to_string());
 }
 
 
