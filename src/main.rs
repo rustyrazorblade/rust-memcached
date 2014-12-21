@@ -136,7 +136,8 @@ enum MemcachedOp {
     GetOp(String), // key
     Increment(String, i64),
     Shutdown,
-    Delete
+    Delete,
+    Err
 }
 
 
@@ -170,7 +171,7 @@ fn parse_command(s: String) -> MemcachedOp {
         return MemcachedOp::Increment(key.to_string(), 1);
     }
 
-    return MemcachedOp::GetOp("test".to_string());
+    return MemcachedOp::Err;
 
 }
 #[test]
