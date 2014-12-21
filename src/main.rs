@@ -68,7 +68,7 @@ fn event_loop(mut cm: Box<CacheManager>) -> Sender<MemcachedMsg> {
                     }
                 },
                 MemcachedOp::Increment(key, value) => {
-
+                    msg.response_channel.send(MemcachedResponse::NotFound);
                 },
                 _ =>
                     println!("unknown"),
@@ -276,6 +276,9 @@ fn main() {
                         },
                         MemcachedResponse::Stored => {
                             stream.write_str("STORED\r\n");
+                        },
+                        MemcachedResponse::NotFound => {
+                            stream.write_str("NOT_FOUND\r\n");
                         }
                         _ =>
                             println!("Umm")
