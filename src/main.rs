@@ -74,6 +74,27 @@ fn event_loop(mut cm: Box<CacheManager>) -> Sender<MemcachedMsg> {
     tx
 }
 
+trait ConvertToInt {
+    fn to_int(&self) -> Option<i64>;
+}
+
+impl ConvertToInt for String {
+    fn to_int(&self) -> Option<i64> {
+        let buf = self.as_slice();
+        let result: Option<i64> = from_str(buf);
+        return result
+    }
+}
+
+#[test]
+fn test_convert_to_int() {
+    let a = "10".to_string().to_int().unwrap();
+    assert_eq!(10i64, a);
+
+    let a = "11".to_string().to_int().unwrap();
+    assert_eq!(11i64, a);
+}
+
 // send a message & wait for response.
 fn send(tx: &Sender<MemcachedMsg>, m: MemcachedOp) -> MemcachedResponse {
     let (response_channel_tx, response_channel_rx) = channel::<MemcachedResponse>();
