@@ -13,6 +13,7 @@ use std::string::String;
 use parser::{MemcachedOp,parse_command};
 
 mod parser;
+mod response;
 
 struct CacheManager {
     data: HashMap<String, String>,
@@ -32,6 +33,9 @@ impl CacheManager {
 
     fn get(&self, key:String) -> Option<&String> {
         self.data.get(&key)
+    }
+    fn increment(&self, key:String) -> Option<i64> {
+        return Some(0i64);
     }
 }
 
