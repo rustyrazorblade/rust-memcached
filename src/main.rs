@@ -58,6 +58,10 @@ fn event_loop(mut cm: Box<CacheManager>) -> Sender<MemcachedMsg> {
                     let new_val = cm.increment(&key, value);
                     msg.response_channel.send(MemcachedResponse::NotFound);
                 },
+                MemcachedOp::Decrement(key, value) => {
+                    let new_val = cm.decrement(&key, value);
+                    msg.response_channel.send(MemcachedResponse::NotFound);
+                },
                 MemcachedOp::FlushAll => {
                     msg.response_channel.send(MemcachedResponse::OK);
                 }

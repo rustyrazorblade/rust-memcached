@@ -5,6 +5,7 @@ pub enum MemcachedOp {
     SetOp(String, String, int), // key, value, expire in seconds
     GetOp(String), // key
     Increment(String, i64),
+    Decrement(String, i64),
     Shutdown,
     Delete,
     Err,
@@ -34,6 +35,9 @@ pub fn parse_command(s: String) -> MemcachedOp {
     } else if command_lowered == "incr" {
         let key = tokens.next().unwrap();
         return MemcachedOp::Increment(key.to_string(), 1);
+    } else if command_lowered == "decr" {
+        let key = tokens.next().unwrap();
+        return MemcachedOp::Decrement(key.to_string(), 1);
     } else if command_lowered == "flush_all" {
         return MemcachedOp::FlushAll
     } else if command_lowered == "touch" {
