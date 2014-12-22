@@ -33,7 +33,5 @@ print c.decr("monkey", 1, noreply=False)
 monkey = c.get("monkey")
 assert monkey == "0", monkey
 
-print num / (time() - start)
-
 
 
